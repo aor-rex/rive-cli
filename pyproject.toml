@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rive"
+name = "rive-cli"
 version = "0.1.0"
 description = "cli for RiveStream movies and TV shows"
 authors = [
@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-rive = "app.main:main"
+rive-cli = "app.main:main"
