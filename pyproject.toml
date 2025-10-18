@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rive-cli"
+version = "0.1.0"
+description = "cli for RiveStream movies and TV shows"
+authors = [
+    {name="aor-rex", email="olasuporeuben@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests",
+]
+
+[project.scripts]
+rive-cli = "app.main:main"
