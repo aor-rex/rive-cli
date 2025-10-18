@@ -2,6 +2,12 @@
 import requests
 import webbrowser
 import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
 
 TMDB_API_KEY = "11bb49a457474f567dd158ca798b0615"
 TMDB_SEARCH_URLS = {
@@ -11,6 +17,10 @@ TMDB_SEARCH_URLS = {
 TMDB_TV_DETAILS = "https://api.themoviedb.org/3/tv/{}"
 RIVE_EMBED = "https://rivestream.org/embed"
 RIVE_DOWNLOAD = "https://rivestream.org/download"
+
+CACHE_PATH = Path.home() / ".rive-cli" / "cache.json"
+CACHE_PATH.parent.mkdir(exist_ok=True)
+CACHE_EXPIRY = 24 * 3600 
 
 def search_tmdb(query):
     results = []
@@ -25,6 +35,23 @@ def search_tmdb(query):
             })
     return results
 
+def search_tmdb_cached(query):
+    cache = load_cache()
+    now = time.time()
+
+    if query in cache:
+        cached_time = cache[query]["time"]
+        if now - cached_time < CACHE_EXPIRY:
+            print("🗂 using cached results")
+            return cache[query]["results"]
+        
+    results = search_tmdb(query)  
+    cache[query] = {
+        "time": now,
+        "results": results
+    }
+    save_cache(cache)
+    return results
 def get_tv_seasons(tv_id):
     r = requests.get(TMDB_TV_DETAILS.format(tv_id), params={"api_key": TMDB_API_KEY})
     data = r.json()
@@ -42,58 +69,78 @@ def build_rive_url(media_type, tmdb_id, season=None, episode=None, download=Fals
         return f"{base}?type=tv&id={tmdb_id}&season={season}&episode={episode}"
     return f"{base}?type=movie&id={tmdb_id}"
 
+def load_cache():
+    if CACHE_PATH.exists():
+        with open(CACHE_PATH, "r") as f:
+            return json.load(f)
+    return {}
+def save_cache(cache):
+    with open(CACHE_PATH, "w") as f:
+        json.dump(cache, f, indent=2)
+def select_with_fzf(options):
+    """
+    Launch fzf for interactive selection.
+    options: list of strings
+    returns: index of selected option
+    """
+    fzf = subprocess.Popen(
+        ["fzf", "--ansi", "--prompt=🔍 Select: "],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True
+    )
+    stdout, _ = fzf.communicate(input="\n".join(options))
+    if not stdout:
+        return None
+    return options.index(stdout.strip())
+
 def main():
     parser = argparse.ArgumentParser(description="RiveStream CLI — open embed or download link in browser")
     parser.add_argument("--download", action="store_true", help="Open the download link instead of the embed")
     args = parser.parse_args()
 
     query = input("🎬 Enter show or movie name: ").strip()
-    results = search_tmdb(query)
+    results = search_tmdb_cached(query)
 
     if not results:
         print("❌ No matches found on TMDB.")
         return
 
-    # List search results
-    print("\n🔍 Search results:")
-    for i, item in enumerate(results, 1):
-        print(f"{i}. {item['title']} ({item['year']}) [{item['type']}]")
-
-    choice = input("\n📝 Select the number of the correct title: ").strip()
-    if not choice.isdigit() or not (1 <= int(choice) <= len(results)):
-        print("❌ Invalid selection.")
+    # interactive fzf selection
+    options = [f"{item['title']} ({item['year']}) [{item['type']}]" for item in results]
+    selected_index = select_with_fzf(options)
+    if selected_index is None:
+        print("❌ No selection made.")
         return
-    selected = results[int(choice) - 1]
+
+    selected = results[selected_index]
     print(f"\n✅ Selected: {selected['title'].upper()} ({selected['year']})")
 
     season = episode = None
     if selected["type"] == "tv":
         seasons = get_tv_seasons(selected["id"])
-        print("\n📺 Available seasons:")
-        for s in seasons:
-            print(f"{s['season_number']}. {s['name']} ({s.get('episode_count', '?')} episodes)")
-
-        season_choice = input("\n📝 Select season number: ").strip()
-        if not season_choice.isdigit() or int(season_choice) not in [s['season_number'] for s in seasons]:
-            print("❌ Invalid season.")
+        season_options = [f"{s['season_number']}. {s['name']} ({s.get('episode_count', '?')} eps)" for s in seasons]
+        season_index = select_with_fzf(season_options)
+        if season_index is None:
+            print("❌ No season selected.")
             return
-        season = int(season_choice)
+        season = seasons[season_index]['season_number']
 
         episodes = get_tv_episodes(selected["id"], season)
-        print(f"\n🎞️ Episodes in Season {season}:")
-        for ep in episodes:
-            print(f"{ep['episode_number']}. {ep['name']}")
-
-        episode_choice = input("\n📝 Select episode number: ").strip()
-        if not episode_choice.isdigit() or int(episode_choice) not in [ep['episode_number'] for ep in episodes]:
-            print("❌ Invalid episode.")
+        episode_options = [f"{ep['episode_number']}. {ep['name']}" for ep in episodes]
+        episode_index = select_with_fzf(episode_options)
+        if episode_index is None:
+            print("❌ No episode selected.")
             return
-        episode = int(episode_choice)
+        episode = episodes[episode_index]['episode_number']
 
     url = build_rive_url(selected["type"], selected["id"], season, episode, download=args.download)
     action = "Download" if args.download else "Watch"
-    print(f"\n🌍 Opening {action} URL in browser: {url}")
+    print(f"\n▶️ Now Playing: {selected['title'].upper()} ({selected['year']})")
+
     webbrowser.open(url)
+
+
 
 if __name__ == "__main__":
     main()
