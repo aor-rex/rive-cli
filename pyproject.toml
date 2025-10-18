@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-rive-cli = "app.main:main"
+rive = "app.main:main"
