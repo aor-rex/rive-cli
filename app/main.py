@@ -74,15 +74,12 @@ def load_cache():
         with open(CACHE_PATH, "r") as f:
             return json.load(f)
     return {}
+
 def save_cache(cache):
     with open(CACHE_PATH, "w") as f:
         json.dump(cache, f, indent=2)
+
 def select_with_fzf(options):
-    """
-    Launch fzf for interactive selection.
-    options: list of strings
-    returns: index of selected option
-    """
     fzf = subprocess.Popen(
         ["fzf", "--ansi", "--prompt=🔍 Select: "],
         stdin=subprocess.PIPE,
@@ -96,48 +93,66 @@ def select_with_fzf(options):
 
 def main():
     parser = argparse.ArgumentParser(description="RiveStream CLI — open embed or download link in browser")
-    parser.add_argument("--download", action="store_true", help="Open the download link instead of the embed")
+    parser.add_argument("-m", "--movie", help="Quick command: open a movie by name or TMDB ID")
+    parser.add_argument("-t", "--tv", help="Quick command: open a TV show by name or TMDB ID")
+    parser.add_argument("-s", "--season", help="Season number for TV show")
+    parser.add_argument("-e", "--episode", help="Episode number for TV show")
+    parser.add_argument("-d", "--download", action="store_true", help="Open the download link instead of the embed")
     args = parser.parse_args()
 
-    query = input("🎬 Enter show or movie name: ").strip()
+    # Determine query
+    if args.movie:
+        query = args.movie
+    elif args.tv:
+        query = args.tv
+    else:
+        query = input("🎬 Enter show or movie name: ").strip()
+
     results = search_tmdb_cached(query)
-
     if not results:
-        print("❌ No matches found on TMDB.")
+        print("❌ No matches found")
         return
 
-    # interactive fzf selection
-    options = [f"{item['title']} ({item['year']}) [{item['type']}]" for item in results]
-    selected_index = select_with_fzf(options)
-    if selected_index is None:
-        print("❌ No selection made.")
-        return
+    # Use fzf selection if multiple results
+    if len(results) == 1:
+        selected = results[0]
+    else:
+        options = [f"{item['title']} ({item['year']}) [{item['type']}]" for item in results]
+        selected_index = select_with_fzf(options)
+        if selected_index is None:
+            print("❌ No selection made.")
+            return
+        selected = results[selected_index]
 
-    selected = results[selected_index]
     print(f"\n✅ Selected: {selected['title'].upper()} ({selected['year']})")
 
     season = episode = None
     if selected["type"] == "tv":
         seasons = get_tv_seasons(selected["id"])
-        season_options = [f"{s['season_number']}. {s['name']} ({s.get('episode_count', '?')} eps)" for s in seasons]
-        season_index = select_with_fzf(season_options)
-        if season_index is None:
-            print("❌ No season selected.")
-            return
-        season = seasons[season_index]['season_number']
+        if args.season:
+            season = int(args.season)
+        else:
+            season_options = [f"{s['season_number']}. {s['name']} ({s.get('episode_count','?')} eps)" for s in seasons]
+            season_index = select_with_fzf(season_options)
+            if season_index is None:
+                print("❌ No season selected.")
+                return
+            season = seasons[season_index]['season_number']
 
         episodes = get_tv_episodes(selected["id"], season)
-        episode_options = [f"{ep['episode_number']}. {ep['name']}" for ep in episodes]
-        episode_index = select_with_fzf(episode_options)
-        if episode_index is None:
-            print("❌ No episode selected.")
-            return
-        episode = episodes[episode_index]['episode_number']
+        if args.episode:
+            episode = int(args.episode)
+        else:
+            episode_options = [f"{ep['episode_number']}. {ep['name']}" for ep in episodes]
+            episode_index = select_with_fzf(episode_options)
+            if episode_index is None:
+                print("❌ No episode selected.")
+                return
+            episode = episodes[episode_index]['episode_number']
 
     url = build_rive_url(selected["type"], selected["id"], season, episode, download=args.download)
-    action = "Download" if args.download else "Watch"
-    print(f"\n▶️ Now Playing: {selected['title'].upper()} ({selected['year']})")
-
+    icon = "⬇️" if args.download else "▶️"
+    print(f"\n{icon} Now Playing: {selected['title'].upper()} ({selected['year']})")
     webbrowser.open(url)
 
 
