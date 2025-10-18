@@ -1,6 +1,6 @@
 # rive cli
 
-a simple command-line tool to search movies and tv shows from [rivestream](https://www.https://rivestream.org/) directly in your browser. supports movies, tv episodes, and download links.
+a simple command-line tool to search movies and tv shows from [rivestream](https://www.rivestream.org/) directly in your browser. supports movies, tv episodes, and download links.
 
 ---
 ## dependecies 
