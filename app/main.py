@@ -93,11 +93,11 @@ def select_with_fzf(options):
 
 def main():
     parser = argparse.ArgumentParser(description="RiveStream CLI — open embed or download link in browser")
-    parser.add_argument("-m", "--movie", help="Quick command: open a movie by name or TMDB ID")
-    parser.add_argument("-t", "--tv", help="open a TV show by name or TMDB ID")
-    parser.add_argument("-s", "--season", help="Season number for TV show")
-    parser.add_argument("-e", "--episode", help="Episode number for TV show")
-    parser.add_argument("-d", "--download", action="store_true", help="Open the download link instead of the embed")
+    parser.add_argument("-m", "--movie", help="open a movie by name")
+    parser.add_argument("-t", "--tv", help="open a tv show by name")
+    parser.add_argument("-s", "--season", help="season number for tv show")
+    parser.add_argument("-e", "--episode", help="episode number for tv show")
+    parser.add_argument("-d", "--download", action="store_true", help="go to download")
     args = parser.parse_args()
 
     # Determine query
