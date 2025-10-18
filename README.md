@@ -8,6 +8,10 @@ a simple command-line tool to search movies and tv shows from [rivestream](https
 
 ## installation
 
+### installing from pypi
+``` pip install rive-cli ```
+### insatlling from source
+
 ```bash
 git clone https://github.com/aor-rex/rive-cli.git
 cd rive-cli
