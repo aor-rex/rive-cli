@@ -29,7 +29,7 @@ pip install .
 
 ```
 rive-cli                             # interactive mode
-rive-cli -d  "the beekeper"          # open download link
+rive-cli -d "the beekeper"           # open download link
 rive-cli -m "conjuring"              # quick movie
 rive-cli -t "johnny test" -s 2 -e 3  # quick tv episode
 
