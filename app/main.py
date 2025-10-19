@@ -22,10 +22,24 @@ CACHE_PATH = Path.home() / ".rive-cli" / "cache.json"
 CACHE_PATH.parent.mkdir(exist_ok=True)
 CACHE_EXPIRY = 24 * 3600 
 
+def safe_get(url, params=None):
+    try:
+        return requests.get(url, params=params, timeout=10)
+    except requests.exceptions.ConnectionError:
+        print("❌ no internet connection.")
+        exit(1)
+    except requests.exceptions.Timeout:
+        print("❌ request timed out.")
+        exit(1)
+    except Exception as e:
+        print(f"⚠️ unexpected error: {e}")
+        exit(1)
+
+
 def search_tmdb(query):
     results = []
     for media_type, url in TMDB_SEARCH_URLS.items():
-        r = requests.get(url, params={"api_key": TMDB_API_KEY, "query": query})
+        r = safe_get(url, params={"api_key": TMDB_API_KEY, "query": query})
         for item in r.json().get("results", []):
             results.append({
                 "title": item.get("title") or item.get("name"),
@@ -34,6 +48,7 @@ def search_tmdb(query):
                 "type": media_type
             })
     return results
+
 
 def search_tmdb_cached(query):
     cache = load_cache()
@@ -53,13 +68,13 @@ def search_tmdb_cached(query):
     save_cache(cache)
     return results
 def get_tv_seasons(tv_id):
-    r = requests.get(TMDB_TV_DETAILS.format(tv_id), params={"api_key": TMDB_API_KEY})
+    r = safe_get(TMDB_TV_DETAILS.format(tv_id), params={"api_key": TMDB_API_KEY})
     data = r.json()
     seasons = data.get("seasons", [])
     return [s for s in seasons if s.get("season_number", 0) > 0]
 
 def get_tv_episodes(tv_id, season_number):
-    r = requests.get(TMDB_TV_DETAILS.format(tv_id) + f"/season/{season_number}", params={"api_key": TMDB_API_KEY})
+    r = safe_get(TMDB_TV_DETAILS.format(tv_id) + f"/season/{season_number}", params={"api_key": TMDB_API_KEY})
     data = r.json()
     return data.get("episodes", [])
 
@@ -100,31 +115,31 @@ def main():
     parser.add_argument("-d", "--download", action="store_true", help="go to download")
     args = parser.parse_args()
 
-    # Determine query
+    
     if args.movie:
         query = args.movie
     elif args.tv:
         query = args.tv
     else:
-        query = input("🎬 Enter show or movie name: ").strip()
+        query = input("🎬 enter show or movie name: ").strip()
 
     results = search_tmdb_cached(query)
     if not results:
-        print("❌ No matches found")
+        print("❌ no matches found")
         return
 
-    # Use fzf selection if multiple results
+    # use fzf selection
     if len(results) == 1:
         selected = results[0]
     else:
         options = [f"{item['title']} ({item['year']}) [{item['type']}]" for item in results]
         selected_index = select_with_fzf(options)
         if selected_index is None:
-            print("❌ No selection made.")
+            print("❌ no selection made.")
             return
         selected = results[selected_index]
 
-    print(f"\n✅ Selected: {selected['title'].upper()} ({selected['year']})")
+    print(f"\n✅ selected: {selected['title'].upper()} ({selected['year']})")
 
     season = episode = None
     if selected["type"] == "tv":
@@ -135,7 +150,7 @@ def main():
             season_options = [f"{s['season_number']}. {s['name']} ({s.get('episode_count','?')} eps)" for s in seasons]
             season_index = select_with_fzf(season_options)
             if season_index is None:
-                print("❌ No season selected.")
+                print("❌ no season selected.")
                 return
             season = seasons[season_index]['season_number']
 
@@ -146,13 +161,20 @@ def main():
             episode_options = [f"{ep['episode_number']}. {ep['name']}" for ep in episodes]
             episode_index = select_with_fzf(episode_options)
             if episode_index is None:
-                print("❌ No episode selected.")
+                print("❌ no episode selected.")
                 return
             episode = episodes[episode_index]['episode_number']
 
+    print(f"📺 {selected['title']} — Season {season}, Episode {episode}")
+
     url = build_rive_url(selected["type"], selected["id"], season, episode, download=args.download)
     icon = "⬇️" if args.download else "▶️"
-    print(f"\n{icon} Now Playing: {selected['title'].upper()} ({selected['year']})")
+
+    if selected["type"] == "tv":
+        print(f"\n{icon} now watching: {selected['title'].upper()} — S{season:02d}E{episode:02d}")
+    else:
+        print(f"\n{icon} now watching: {selected['title'].upper()} ({selected['year']})")
+
     webbrowser.open(url)
 
 
