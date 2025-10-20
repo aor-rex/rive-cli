@@ -41,9 +41,9 @@ def safe_get(url, params=None, retries=3):
 def build_vidsrc_url(media_type, tmdb_id, season=None, episode=None, download=False):
     if download:
         if media_type == "tv":
-            return f"{VIDSRC_VIP}/{tmdb_id}/{season}/{episode}"
+            return f"{VIDSRC_VIP}/tv/{tmdb_id}/{season}/{episode}"
         elif media_type == "movie":
-            return f"{VIDSRC_VIP}/movie/{tmdb_id}"  # <-- fix for movie downloads
+            return f"{VIDSRC_VIP}/movie/{tmdb_id}"
     else:
         if media_type == "movie":
             return f"{VIDSRC_EMBED}/movie?tmdb={tmdb_id}"
@@ -128,7 +128,7 @@ def main():
     parser.add_argument("-s", "--season", help="season number for tv show")
     parser.add_argument("-e", "--episode", help="episode number for tv show")
     parser.add_argument("-d", "--download", action="store_true", help="go to download")
-    parser.add_argument("-p", "--provider", choices=["rive", "vidsrc"], default="rive", help="choose provider (rive,vidsrc)")
+    parser.add_argument("-p", "--provider", choices=["rive", "vidsrc"], default="rive", help="choose provider (rive, vidsrc)")
 
     args = parser.parse_args()
 
@@ -145,7 +145,6 @@ def main():
         print("❌ no matches found")
         return
 
-    # use fzf selection
     if len(results) == 1:
         selected = results[0]
     else:
@@ -182,8 +181,6 @@ def main():
                 return
             episode = episodes[episode_index]['episode_number']
 
-    print(f"📺 {selected['title']} — Season {season}, Episode {episode}")
-
     if args.provider == "vidsrc":
         url = build_vidsrc_url(selected["type"], selected["id"], season, episode, download=args.download)
     else:
@@ -191,10 +188,17 @@ def main():
 
     icon = "⬇️" if args.download else "▶️"
 
-    if selected["type"] == "tv":
-        print(f"\n{icon} now watching: {selected['title'].upper()} — S{season:02d}E{episode:02d}")
+    if args.download:
+        if selected["type"] == "tv":
+            print(f"\n{icon} start downloading: {selected['title'].upper()} — S{season:02d}E{episode:02d}")
+        else:
+            print(f"\n{icon} start downloading: {selected['title'].upper()} ({selected['year']})")
     else:
-        print(f"\n{icon} now watching: {selected['title'].upper()} ({selected['year']})")
+        if selected["type"] == "tv":
+            print(f"\n{icon} start watching: {selected['title'].upper()} — S{season:02d}E{episode:02d}")
+        else:
+            print(f"\n{icon} start watching: {selected['title'].upper()} ({selected['year']})")
+
 
     webbrowser.open(url)
 
