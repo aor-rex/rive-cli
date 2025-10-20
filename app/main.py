@@ -17,24 +17,36 @@ TMDB_SEARCH_URLS = {
 TMDB_TV_DETAILS = "https://api.themoviedb.org/3/tv/{}"
 RIVE_EMBED = "https://rivestream.org/embed"
 RIVE_DOWNLOAD = "https://rivestream.org/download"
+VIDSRC_EMBED = "https://vidsrc-embed.ru/embed"
+VIDSRC_VIP = "https://dl.vidsrc.vip/tv"
+
 
 CACHE_PATH = Path.home() / ".rive-cli" / "cache.json"
 CACHE_PATH.parent.mkdir(exist_ok=True)
 CACHE_EXPIRY = 24 * 3600 
 
-def safe_get(url, params=None):
-    try:
-        return requests.get(url, params=params, timeout=10)
-    except requests.exceptions.ConnectionError:
-        print("❌ no internet connection.")
-        exit(1)
-    except requests.exceptions.Timeout:
-        print("❌ request timed out.")
-        exit(1)
-    except Exception as e:
-        print(f"⚠️ unexpected error: {e}")
-        exit(1)
+def safe_get(url, params=None, retries=3):
+    for i in range(retries):
+        try:
+            return requests.get(url, params=params, timeout=30)
+        except requests.exceptions.Timeout:
+            print(f"⚠️ request timed out, retrying {i+1}/{retries}...")
+        except requests.exceptions.ConnectionError:
+            print("❌ no internet connection.")
+            exit(1)
+    print("❌ failed after multiple retries.")
+    exit(1)
 
+
+def build_vidsrc_url(media_type, tmdb_id, season=None, episode=None, download=False):
+    if download and media_type == "tv":
+        return f"{VIDSRC_VIP}/{tmdb_id}/{season}/{episode}"
+    else:
+        if media_type == "movie":
+            return f"{VIDSRC_EMBED}/movie?tmdb={tmdb_id}"
+        elif media_type == "tv":
+            return f"{VIDSRC_EMBED}/tv?tmdb={tmdb_id}&season={season}&episode={episode}"
+    return None
 
 def search_tmdb(query):
     results = []
@@ -107,12 +119,14 @@ def select_with_fzf(options):
     return options.index(stdout.strip())
 
 def main():
-    parser = argparse.ArgumentParser(description="RiveStream CLI — open embed or download link in browser")
+    parser = argparse.ArgumentParser(description="rive-cli — open embed or download link in browser")
     parser.add_argument("-m", "--movie", help="open a movie by name")
     parser.add_argument("-t", "--tv", help="open a tv show by name")
     parser.add_argument("-s", "--season", help="season number for tv show")
     parser.add_argument("-e", "--episode", help="episode number for tv show")
     parser.add_argument("-d", "--download", action="store_true", help="go to download")
+    parser.add_argument("-p", "--provider", choices=["rive", "vidsrc"], default="rive", help="choose provider (default: rive)")
+
     args = parser.parse_args()
 
     
@@ -167,7 +181,11 @@ def main():
 
     print(f"📺 {selected['title']} — Season {season}, Episode {episode}")
 
-    url = build_rive_url(selected["type"], selected["id"], season, episode, download=args.download)
+    if args.provider == "vidsrc":
+        url = build_vidsrc_url(selected["type"], selected["id"], season, episode, download=args.download)
+    else:
+        url = build_rive_url(selected["type"], selected["id"], season, episode, download=args.download)
+
     icon = "⬇️" if args.download else "▶️"
 
     if selected["type"] == "tv":

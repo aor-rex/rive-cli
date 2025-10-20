@@ -24,6 +24,7 @@ pip install .
     -t, --tv TV           open a tv show by name
     -s, --season          season number for tv show
     -e, --episode         episode number for tv show
+    -p, --provider        choose provider "rive, vidsrc" (default: rive)
 ```
 ## usage
 
@@ -32,5 +33,5 @@ rive-cli                             # interactive mode
 rive-cli -d "the beekeper"           # open download link
 rive-cli -m "conjuring"              # quick movie
 rive-cli -t "johnny test" -s 2 -e 3  # quick tv episode
-
+rive-cli -p "vidsrc" -t "kit vs kat" # use vidsrc as a provider
 ```
