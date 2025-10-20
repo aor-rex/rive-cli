@@ -125,7 +125,7 @@ def main():
     parser.add_argument("-s", "--season", help="season number for tv show")
     parser.add_argument("-e", "--episode", help="episode number for tv show")
     parser.add_argument("-d", "--download", action="store_true", help="go to download")
-    parser.add_argument("-p", "--provider", choices=["rive", "vidsrc"], default="rive", help="choose provider (default: rive)")
+    parser.add_argument("-p", "--provider", choices=["rive", "vidsrc"], default="rive", help="choose provider "rive, vidsrc" (default: rive)")
 
     args = parser.parse_args()
 
