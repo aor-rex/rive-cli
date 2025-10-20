@@ -1,6 +1,6 @@
 # rive cli
 
-a simple command-line tool to search movies and tv shows from [rivestream](https://www.rivestream.org/) directly in your browser. supports movies, tv episodes, and download links.
+a simple command-line tool to search movies and tv shows from [rivestream](https://www.rivestream.org/) and [vidsrc](https://vidsrc-embed.ru/) directly in your browser. supports movies, tv episodes, and download links.
 
 ---
 ## dependecies 
@@ -18,17 +18,17 @@ pip install .
 ## options
 
 ```
-    -h, --help            show this help message and exit
+    -h, --help            show this help message
     -m, --movie           open a movie by name
     -d, --download        go to download
-    -t, --tv TV           open a tv show by name
+    -t, --tv              open a tv show by name
     -s, --season          season number for tv show
     -e, --episode         episode number for tv show
     -p, --provider        choose provider "rive, vidsrc" (default: rive)
 ```
 ## usage
 
-```
+``` bash
 rive-cli                             # interactive mode
 rive-cli -d "the beekeper"           # open download link
 rive-cli -m "conjuring"              # quick movie
