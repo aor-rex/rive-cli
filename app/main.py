@@ -18,7 +18,7 @@ TMDB_TV_DETAILS = "https://api.themoviedb.org/3/tv/{}"
 RIVE_EMBED = "https://rivestream.org/embed"
 RIVE_DOWNLOAD = "https://rivestream.org/download"
 VIDSRC_EMBED = "https://vidsrc-embed.ru/embed"
-VIDSRC_VIP = "https://dl.vidsrc.vip/tv"
+VIDSRC_VIP = "https://dl.vidsrc.vip"
 
 
 CACHE_PATH = Path.home() / ".rive-cli" / "cache.json"
@@ -39,8 +39,11 @@ def safe_get(url, params=None, retries=3):
 
 
 def build_vidsrc_url(media_type, tmdb_id, season=None, episode=None, download=False):
-    if download and media_type == "tv":
-        return f"{VIDSRC_VIP}/{tmdb_id}/{season}/{episode}"
+    if download:
+        if media_type == "tv":
+            return f"{VIDSRC_VIP}/{tmdb_id}/{season}/{episode}"
+        elif media_type == "movie":
+            return f"{VIDSRC_VIP}/movie/{tmdb_id}"  # <-- fix for movie downloads
     else:
         if media_type == "movie":
             return f"{VIDSRC_EMBED}/movie?tmdb={tmdb_id}"
